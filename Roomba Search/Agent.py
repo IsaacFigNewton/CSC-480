@@ -1,16 +1,16 @@
 from WorldModel import WorldModel
 from GameTreeNode import GameTreeNode
 from Action import Action
-from config import offset_map, is_legal_move
+from config import offset_map
 
 class Agent:
   def __init__(self,
                world: WorldModel,
                initial_pos: tuple[int, int]):
     # vars for tracking position within game tree for DFS and UCS
+    self.visited = set()
     self.path = list()
     self.pos = initial_pos
-    self.stack = list()
 
     self.world = world
     self.tree_node = GameTreeNode(self.pos)
@@ -32,74 +32,35 @@ class Agent:
     }
     # filter it down to a list of legal moves
     for move, new_pos in possible_moves.items():
-      if is_legal_move(self.world, self.pos, new_pos):
-        self.tree_node.children.add(Action(move, GameTreeNode(new_pos)))
+      proposed_move = Action(move, GameTreeNode(new_pos))
+      # check if the move is legal
+      if proposed_move.is_legal(self.world, self.pos):
+        self.tree_node.acts_available.add(proposed_move)
         self.nodes_generated += 1
 
-
-  def current_cell_dirty(self):
-    """
-    Check if the current cell is dirty.
-    """
-    return self.world.grid[self.pos[0]][self.pos[1]] == "*"
 
   def execute_action(self, action: Action):
     """
     Execute the action by updating the agent's position and the world state.
     """
-    if not is_legal_move(self.world, self.pos, action.end_state.pos):
-      raise ValueError("Proposed action is not legal")
+    if not action.is_legal(self.world, self.pos):
+      raise ValueError(f"Proposed action {action.act_type} to {action.end_state.pos} is illegal from current position {self.pos}.")
     if action.act_type not in offset_map and action.act_type != "V":
       raise ValueError("Invalid action type")
     
+    self.path.append(action.act_type)
     # if the action is vacuuming, check if the cell is dirty
     # and update the world model accordingly
     if action.act_type == "V":
-        if not self.current_cell_dirty():
-            raise ValueError("Cannot clean a cell that is not dirty")
-        else:
-            print("V")
-            self.world.dirty_cells.remove(self.pos)
-            self.world.grid[self.pos[0]][self.pos[1]] = "_"
-            return
+        self.world.remove_dirty_cell(self.pos)
     
-    # if the action is a move, update the agent's path and position
+    # if the action is a move, update the agent's set of visited nodes and position
     else:
-        # add the current node to the path
-        self.path.append(self.pos)
+        # add the action to the move sequence
+        self.path.append(action.act_type)
+        # add the current node to the set of visited nodes
+        self.visited.add(self.pos)
         # update the agent's position
         self.pos = action.end_state.pos
         # update the world model
         self.tree_node = action.end_state
-
-
-  def select_action(self, action:Action|None=None):
-    """
-    Select the next action to take based on the current state of the world.
-    If an action is provided, it will be executed immediately.
-    Otherwise, the agent will expand its current node and select the next action
-    based on the decision process.
-    """
-    # if a legal action is provided, execute it
-    if action:
-        self.execute_action(action)
-        return
-
-    # if the bot is on dirt, clean it
-    if self.current_cell_dirty():
-        self.execute_action(Action("V", self.tree_node))
-        return
-
-    # expand all the current node's children
-    self.expand_children()
-    for child in self.tree_node.children:
-        # add new, unexplored children to the set under consideration
-        if child.end_state.pos not in self.path:
-            self.stack.append(child)
-
-    # take the first available new move
-    next_move = self.stack.pop()
-    print(next_move.act_type)
-    # print(next_move[0], next_move[1].pos)
-    self.pos = next_move.end_state.pos
-    self.tree_node = next_move.end_state

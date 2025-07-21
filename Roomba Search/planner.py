@@ -1,6 +1,5 @@
 import sys
 import re
-import random
 from World import World
 
 def main(algorithm:str="DFS", world_file:str="random-5x7.txt"):

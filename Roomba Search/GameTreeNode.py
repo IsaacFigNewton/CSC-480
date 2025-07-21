@@ -1,12 +1,10 @@
-from config import offset_map, is_legal_move
-from WorldModel import WorldModel
+from config import offset_map
 
 class GameTreeNode:
   def __init__(self, pos:tuple[int, int]):
-    self.pos = pos
-    # a set of child game states of the form:
-    #   (<edge type (N, S, E, W)>, <new GameTreeNode>)
-    self.children = set()
+    self.pos:tuple[int, int] = pos
+    # a set of available actions from this node
+    self.acts_available = set()
 
   def __hash__(self):
     return hash(self.pos)

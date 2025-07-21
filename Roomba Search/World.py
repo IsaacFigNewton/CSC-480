@@ -3,6 +3,7 @@ import heapq as hq
 
 from WorldModel import WorldModel
 from Agent import Agent
+from Action import Action
 
 
 class World(WorldModel):
@@ -12,9 +13,9 @@ class World(WorldModel):
     self.num_rows = int(world_lst[1])
     self.num_cols = int(world_lst[0])
 
-    self.grid = list()
+    self.grid:list[list[str]] = list()
     self.dirty_cells = set()
-    for i, row in enumerate(world_lst[2:-1]):
+    for i, row in enumerate(world_lst[2:]):
       self.grid.append(list())
       for j, c in enumerate(row):
         self.grid[i].append(c)
@@ -45,9 +46,24 @@ class World(WorldModel):
     )
     
     # Depth-First Search (DFS) algorithm
-    if algorithm == "DFS":        
+    if algorithm == "DFS":
+        stack = list()
         while current_agent.world.dirty_cells:
-            current_agent.select_action()
+            # if the bot is on dirt, clean it
+            if current_agent.world.is_dirty(current_agent.pos):
+                current_agent.nodes_generated += 1
+                current_agent.execute_action(Action("V", current_agent.tree_node))
+            
+            else:
+                # expand all the current node's children
+                current_agent.expand_children()
+                for action in current_agent.tree_node.acts_available:
+                    # add new, unexplored children to the set under consideration
+                    if action.end_state.pos not in current_agent.path:
+                        stack.append(action)
+
+                # take the first available new move
+                current_agent.execute_action(stack.pop())
         
         output["nodes_expanded"] = current_agent.nodes_expanded
         output["nodes_generated"] = current_agent.nodes_generated
@@ -56,7 +72,7 @@ class World(WorldModel):
     elif algorithm == "UCS":
         # create a priority queue for agents
         # each agent will explore a different path
-        agents = list()
+        agents:list[tuple[int, Agent]] = list()
         hq.heapify(agents)
         hq.heappush(agents, (0, current_agent))
         
@@ -68,20 +84,25 @@ class World(WorldModel):
             # if the agent has no more dirty cells, it has found the shortest path
             if not current_agent.world.dirty_cells:
                 break
-            
+            # if the agent is on a dirty cell, vacuum it
+            elif current_agent.world.is_dirty(current_agent.pos):
+                current_agent.execute_action(Action("V", current_agent.tree_node))
+                output["nodes_generated"] += 1
+                hq.heappush(agents, (len(current_agent.path), current_agent))
             # otherwise, expand the current agent's available actions
-            current_agent.expand_children()
-            output["nodes_expanded"] += 1
-            output["nodes_generated"] += len(current_agent.children)
-            for action in current_agent.tree_node.children:
-                # create a new agent
-                new_agent = Agent(
-                    world=current_agent.world,
-                    initial_pos=current_agent.pos
-                )
-                # have the new agent execute the action, then add it to the priority queue
-                new_agent.execute_action(action)
-                hq.heappush(agents, (len(new_agent.path), new_agent))
+            else:
+                current_agent.expand_children()
+                output["nodes_expanded"] += 1
+                output["nodes_generated"] += len(current_agent.tree_node.acts_available)
+                for action in current_agent.tree_node.acts_available:
+                    # create a new agent
+                    new_agent = Agent(
+                        world=current_agent.world,
+                        initial_pos=current_agent.pos
+                    )
+                    # have the new agent execute the action, then add it to the priority queue
+                    new_agent.execute_action(action)
+                    hq.heappush(agents, (len(new_agent.path), new_agent))
 
     output["path"] = current_agent.path
     return output

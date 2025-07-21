@@ -13,3 +13,19 @@ class WorldModel:
                 if self.grid[row][col] == "@":
                     return (row, col)
         raise ValueError("No bot found in the grid")
+    
+    def is_dirty(self, pos: tuple[int, int]) -> bool:
+        """
+        Check if the cell at the given position is dirty.
+        """
+        return pos in self.dirty_cells
+    
+    def remove_dirty_cell(self, pos: tuple[int, int]):
+        """
+        Remove a dirty cell from the world model.
+        """
+        if pos in self.dirty_cells:
+            self.dirty_cells.remove(pos)
+            self.grid[pos[0]][pos[1]] = "_"
+        else:
+            raise ValueError(f"Cell {pos} is not dirty.")
