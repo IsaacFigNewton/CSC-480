@@ -1,4 +1,4 @@
-from types import Any
+import re
 import heapq as hq
 
 from WorldModel import WorldModel
@@ -8,6 +8,7 @@ from Agent import Agent
 class World(WorldModel):
   def __init__(self, file_contents:str):
     world_lst = file_contents.split("\n")
+    print(world_lst)
     self.num_rows = int(world_lst[1])
     self.num_cols = int(world_lst[0])
 
@@ -25,7 +26,7 @@ class World(WorldModel):
   
 
   # depth-first search
-  def search(self, algorithm:str = "DFS") -> dict[str, Any]:
+  def search(self, algorithm:str = "DFS") -> dict:
     if algorithm not in {"DFS", "UCS"}:
         raise ValueError(f"Unknown algorithm: {algorithm}. Supported algorithms: DFS, UCS.")
 

@@ -10,6 +10,6 @@ class WorldModel:
     def get_bot_pos_from_grid(self):
         for row in range(self.num_rows):
             for col in range(self.num_cols):
-                if self.grid[row][col] == "a":
+                if self.grid[row][col] == "@":
                     return (row, col)
         raise ValueError("No bot found in the grid")
