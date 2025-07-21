@@ -8,7 +8,7 @@ class Agent:
                world: WorldModel,
                initial_pos: tuple[int, int]):
     # vars for tracking position within game tree for DFS and UCS
-    self.current_path = list()
+    self.path = list()
     self.pos = initial_pos
     self.stack = list()
 
@@ -24,6 +24,7 @@ class Agent:
     and adding them to the set of children if they are legal moves.
     """
 
+    self.nodes_expanded += 1
     # create a list of possible moves
     possible_moves = {
         move: self.tree_node.get_proposed_move_pos(move)
@@ -33,6 +34,7 @@ class Agent:
     for move, new_pos in possible_moves.items():
       if is_legal_move(self.world, self.pos, new_pos):
         self.tree_node.children.add(Action(move, GameTreeNode(new_pos)))
+        self.nodes_generated += 1
 
 
   def current_cell_dirty(self):
@@ -64,7 +66,7 @@ class Agent:
     # if the action is a move, update the agent's path and position
     else:
         # add the current node to the path
-        self.current_path.append(self.pos)
+        self.path.append(self.pos)
         # update the agent's position
         self.pos = action.end_state.pos
         # update the world model
@@ -90,11 +92,9 @@ class Agent:
 
     # expand all the current node's children
     self.expand_children()
-    self.nodes_expanded += 1
-    self.nodes_generated += len(self.tree_node.children)
     for child in self.tree_node.children:
         # add new, unexplored children to the set under consideration
-        if child.end_state.pos not in self.current_path:
+        if child.end_state.pos not in self.path:
             self.stack.append(child)
 
     # take the first available new move

@@ -3,33 +3,24 @@ import random
 from World import World
 
 
-def main(contents: str):
-    if len(sys.argv) != 5:
-        print("Usage: python3 planner.py <world_spec_filename> <algorithm>")
+def main():
+    if len(sys.argv) != 3:
+        print("Usage: python3 planner.py [algorithm] [world-file]")
         sys.exit(1)
+    algorithm = sys.argv[1]
+    world_file = sys.argv[2]
 
-    # Load the world from the provided contents
-    # rows = int(sys.argv[1])
-    # cols = int(sys.argv[2])
-    # blocked_fraction = float(sys.argv[3])
-    # num_dirty = int(sys.argv[4])
+    # Load the world file's contents
+    with open(world_file, 'r') as file:
+        contents = file.read().strip()
 
     world = World(contents)
-    return world.search("DFS")
+    output = world.search("DFS")
+    
+    for r in output["path"]:
+      print(r)
+    print(f"{output['nodes_generated']} nodes generated.")
+    print(f"{output['nodes_expanded']} nodes expanded.")
 
 if __name__ == "__main__":
-  output = main(
-      contents="""7
-      5
-      _#a____
-      ___#__#
-      *__#_*_
-      _______
-      ____*__
-      """
-  )
-
-  for r in output["path"]:
-    print(r)
-  print("Total nodes generated:", output["nodes_generated"])
-  print("Total nodes expanded:", output["nodes_expanded"])
+  main()
