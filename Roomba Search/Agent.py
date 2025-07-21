@@ -1,21 +1,16 @@
 from WorldModel import WorldModel
 from GameTreeNode import GameTreeNode
-from DecisionProcess import DecisionProcess
 from Action import Action
 from config import offset_map, is_legal_move
 
 class Agent:
   def __init__(self,
                world: WorldModel,
-               initial_pos: tuple[int, int],
-               decision_process: DecisionProcess,
-               heuristic=None):
+               initial_pos: tuple[int, int]):
     # vars for tracking position within game tree for DFS and UCS
     self.current_path = list()
     self.pos = initial_pos
-    # curry the heuristic with the
-    self.heuristic = lambda x: heuristic(self.pos, x) if heuristic else None
-    self.dp = decision_process
+    self.stack = list()
 
     self.world = world
     self.tree_node = GameTreeNode(self.pos)
@@ -76,7 +71,7 @@ class Agent:
         self.tree_node = action.end_state
 
 
-  def select_action(self, action:Action=None):
+  def select_action(self, action:Action|None=None):
     """
     Select the next action to take based on the current state of the world.
     If an action is provided, it will be executed immediately.
@@ -100,10 +95,10 @@ class Agent:
     for child in self.tree_node.children:
         # add new, unexplored children to the set under consideration
         if child.end_state.pos not in self.current_path:
-            self.dp.push(child, self.heuristic)
+            self.stack.append(child)
 
     # take the first available new move
-    next_move = self.dp.pop()
+    next_move = self.stack.pop()
     print(next_move.act_type)
     # print(next_move[0], next_move[1].pos)
     self.pos = next_move.end_state.pos

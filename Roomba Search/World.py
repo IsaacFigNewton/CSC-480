@@ -1,6 +1,7 @@
+import heapq as hq
+
 from WorldModel import WorldModel
 from Agent import Agent
-from DecisionProcess import DecisionProcess
 
 
 class World(WorldModel):
@@ -20,17 +21,12 @@ class World(WorldModel):
     print("Successfully loaded world:")
     for row in self.grid:
       print(row)
-
-    self.act_store_map = {
-        "DFS": "stack",
-        "UCS": "priority queue"
-    }
-
+  
 
   # depth-first search
   def search(self, algorithm:str = "DFS"):
-    if algorithm not in self.act_store_map:
-        raise ValueError(f"Unknown algorithm: {algorithm}. Supported algorithms: {list(self.act_store_map.keys())}")
+    if algorithm not in {"DFS", "UCS"}:
+        raise ValueError(f"Unknown algorithm: {algorithm}. Supported algorithms: DFS, UCS.")
 
     if algorithm == "DFS":
         print("Using Depth-First Search (DFS) algorithm.")
@@ -38,11 +34,7 @@ class World(WorldModel):
             # pass the world model to the agent
             world=self,
             # get the initial position of the bot from the grid
-            initial_pos=self.get_bot_pos_from_grid(),
-            # use the decision process and heuristic for the specified algorithm
-            decision_process=DecisionProcess(
-                act_store_type=self.act_store_map["DFS"]
-            )
+            initial_pos=self.get_bot_pos_from_grid()
         )
         
         while self.dirty_cells:
@@ -52,12 +44,15 @@ class World(WorldModel):
 
     elif algorithm == "UCS":
         print("Using Uniform Cost Search (UCS) algorithm.")
+        # create a priority queue for agents
+        # each agent will explore a different path
+        agents = list()
+        hq.heapify(agents)
         agent = Agent(
-            initial_pos=self.get_bot_pos_from_grid(),
-            # use the decision process and heuristic for the specified algorithm
-            decision_process=DecisionProcess(
-                act_store_type=self.act_store_map["DFS"]
-            )
+            # pass the world model to the agent
+            world=self,
+            # get the initial position of the bot from the grid
+            initial_pos=self.get_bot_pos_from_grid()
         )
 
         # TODO: Implement Djikstra's algorithm for UCS, with each agent action having a cost of 1.
