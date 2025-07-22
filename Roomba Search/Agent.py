@@ -18,6 +18,13 @@ class Agent:
     self.nodes_expanded = 0
 
 
+  def __lt__(self, other: "Agent"):
+    return len(self.path) < len(other.path)
+  
+  def __gt__(self, other: "Agent"):
+    return len(self.path) > len(other.path)
+
+
   def get_move_pos(self, move):
     diff = offset_map[move]
     return (

@@ -62,10 +62,10 @@ class World(WorldModel):
         pq: list[tuple[int, Agent]] = list()
         # Initialize the priority queue with the starting agent
         hq.heapify(pq)
-        hq.heappush(pq, (0, start_agent))
+        hq.heappush(pq, start_agent)
 
         while pq:
-            cost, agent = hq.heappop(pq)
+            agent = hq.heappop(pq)
 
             # If the agent has found a path to clean all dirty cells, return it
             if not agent.world.dirty_cells:
@@ -74,14 +74,14 @@ class World(WorldModel):
             # If the agent is on a dirty cell, clean it
             if agent.world.is_dirty(agent.pos):
                 agent.execute_action(Action("V", agent.tree_node))
-                hq.heappush(pq, (len(agent.path), deepcopy(agent)))
+                hq.heappush(pq, deepcopy(agent))
             
             # If the agent has available actions, expand them
             else:
                 agent.expand_children()
                 if not agent.tree_node.available_acts:
                     agent.backtrack()
-                    hq.heappush(pq, (len(agent.path), deepcopy(agent)))
+                    hq.heappush(pq, deepcopy(agent))
                 else:
                     nodes_expanded += 1
                     nodes_generated += len(agent.tree_node.available_acts)
@@ -90,7 +90,7 @@ class World(WorldModel):
                     for action in agent.tree_node.available_acts:
                         new_agent = deepcopy(agent)
                         new_agent.execute_action(action)
-                        hq.heappush(pq, (len(new_agent.path), new_agent))
+                        hq.heappush(pq, new_agent)
 
         raise ValueError("No valid path found in UCS.")
 
