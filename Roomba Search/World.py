@@ -1,4 +1,5 @@
 import re
+from copy import deepcopy
 import heapq as hq
 
 from WorldModel import WorldModel
@@ -53,6 +54,46 @@ class World(WorldModel):
         # If no valid path found, return None
         raise ValueError("No valid path found in DFS.")
 
+    def ucs(self, start_agent: Agent) -> tuple[int, int, Agent]:
+        nodes_expanded = 0
+        nodes_generated = 0
+
+        # Priority queue: (cost, agent_id, agent)
+        pq: list[tuple[int, Agent]] = list()
+        # Initialize the priority queue with the starting agent
+        hq.heapify(pq)
+        hq.heappush(pq, (0, start_agent))
+
+        while pq:
+            cost, agent = hq.heappop(pq)
+
+            # If the agent has found a path to clean all dirty cells, return it
+            if not agent.world.dirty_cells:
+                return nodes_expanded, nodes_generated, agent
+
+            # If the agent is on a dirty cell, clean it
+            if agent.world.is_dirty(agent.pos):
+                agent.execute_action(Action("V", agent.tree_node))
+                hq.heappush(pq, (len(agent.path), deepcopy(agent)))
+            
+            # If the agent has available actions, expand them
+            else:
+                agent.expand_children()
+                if not agent.tree_node.available_acts:
+                    agent.backtrack()
+                    hq.heappush(pq, (len(agent.path), deepcopy(agent)))
+                else:
+                    nodes_expanded += 1
+                    nodes_generated += len(agent.tree_node.available_acts)
+                    # for each available action, create a new agent and push it to the priority queue
+                    #    using the length of the path as the cost
+                    for action in agent.tree_node.available_acts:
+                        new_agent = deepcopy(agent)
+                        new_agent.execute_action(action)
+                        hq.heappush(pq, (len(new_agent.path), new_agent))
+
+        raise ValueError("No valid path found in UCS.")
+
 
     # depth-first search
     def search(self, algorithm:str = "DFS") -> dict:
@@ -81,39 +122,7 @@ class World(WorldModel):
 
         # Uniform Cost Search (UCS) algorithm (basically BFS)
         elif algorithm == "UCS":
-            # create a priority queue for agents
-            # each agent will explore a different path
-            agents:list[tuple[int, Agent]] = list()
-            hq.heapify(agents)
-            hq.heappush(agents, (0, current_agent))
-            
-            # while there are agents in the priority queue
-            while agents:
-                # pop the agent with the lowest cost
-                _, current_agent = hq.heappop(agents)
-                
-                # if the agent has no more dirty cells, it has found the shortest path
-                if not current_agent.world.dirty_cells:
-                    break
-                # if the agent is on a dirty cell, vacuum it
-                elif current_agent.world.is_dirty(current_agent.pos):
-                    current_agent.execute_action(Action("V", current_agent.tree_node))
-                    output["nodes_generated"] += 1
-                    hq.heappush(agents, (len(current_agent.path), current_agent))
-                # otherwise, expand the current agent's available actions
-                else:
-                    current_agent.expand_children()
-                    output["nodes_expanded"] += 1
-                    output["nodes_generated"] += len(current_agent.tree_node.available_acts)
-                    for action in current_agent.tree_node.available_acts:
-                        # create a new agent
-                        new_agent = Agent(
-                            world=current_agent.world,
-                            initial_pos=current_agent.pos
-                        )
-                        # have the new agent execute the action, then add it to the priority queue
-                        new_agent.execute_action(action)
-                        hq.heappush(agents, (len(new_agent.path), new_agent))
+            current_agent = self.ucs(current_agent)
 
         output["path"] = current_agent.move_seq
         return output
