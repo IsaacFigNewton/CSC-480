@@ -122,7 +122,9 @@ class World(WorldModel):
 
         # Uniform Cost Search (UCS) algorithm (basically BFS)
         elif algorithm == "UCS":
-            current_agent = self.ucs(current_agent)
+            nodes_expanded, nodes_generated, current_agent = self.ucs(current_agent)
+            output["nodes_expanded"] = nodes_expanded
+            output["nodes_generated"] = nodes_generated
 
         output["path"] = current_agent.move_seq
         return output
