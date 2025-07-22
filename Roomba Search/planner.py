@@ -2,7 +2,7 @@ import sys
 import re
 from World import World
 
-def main(algorithm:str="DFS", world_file:str="random-5x7.txt"):
+def main(algorithm:str="UCS", world_file:str="random-5x7.txt"):
     # if len(sys.argv) != 3:
     #     print("Usage: python3 planner.py [algorithm] [world-file]")
     #     sys.exit(1)
@@ -15,7 +15,7 @@ def main(algorithm:str="DFS", world_file:str="random-5x7.txt"):
     print(contents)
 
     world = World(contents)
-    output = world.search("DFS")
+    output = world.search(algorithm)
     
     for r in output["path"]:
       print(r)

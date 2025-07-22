@@ -1,10 +1,11 @@
 from config import offset_map
 
 class GameTreeNode:
-  def __init__(self, pos:tuple[int, int]):
+  def __init__(self, pos:tuple[int, int], parent=None):
     self.pos:tuple[int, int] = pos
+    self.parent = parent
     # a set of available actions from this node
-    self.acts_available = set()
+    self.available_acts = list()
 
   def __hash__(self):
     return hash(self.pos)
