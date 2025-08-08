@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Optional
 from collections import Counter
 
 class Scorer:
@@ -151,72 +151,120 @@ class Scorer:
         
         return best_cards[:5]
     
+    def get_possible_hands(self) -> Dict[str, Optional[List[Tuple[int, int]]]]:
+        """
+        Get all possible hands that can be made from the cards.
+        
+        Returns:
+            Dictionary with hand names as keys and associated cards as values,
+            or None if the hand cannot be made
+        """
+        stats = self.analyze_hand()
+        possible_hands = {}
+        
+        # Check for flush
+        flush_cards = self._get_flush_cards(stats)
+        has_flush = len(flush_cards) == 5
+        
+        if has_flush:
+            # Create temporary scorer with flush cards to check for straight flush
+            temp_scorer = Scorer(flush_cards)
+            flush_stats = temp_scorer.analyze_hand()
+            
+            if flush_stats['straight']:
+                straight_cards = temp_scorer._get_straight_cards(flush_stats)
+                # Check for royal flush
+                if set([8, 9, 10, 11, 12]).issubset(set([card[0] for card in straight_cards])):
+                    possible_hands['royal_flush'] = straight_cards
+                    possible_hands['straight_flush'] = straight_cards  # Royal flush is also a straight flush
+                else:
+                    possible_hands['royal_flush'] = None
+                    possible_hands['straight_flush'] = straight_cards
+            else:
+                possible_hands['royal_flush'] = None
+                possible_hands['straight_flush'] = None
+            
+            possible_hands['flush'] = flush_cards
+        else:
+            possible_hands['royal_flush'] = None
+            possible_hands['straight_flush'] = None
+            possible_hands['flush'] = None
+        
+        # Check for straight (always check, regardless of flush)
+        if stats['straight']:
+            possible_hands['straight'] = self._get_straight_cards(stats)
+        else:
+            possible_hands['straight'] = None
+        
+        # Check for same-rank combinations
+        best_cards_by_rank_group = self._get_best_cards_by_rank_groups(stats)
+        
+        # Four of a kind
+        if stats['max_same_rank'] >= 4:
+            possible_hands['four_of_a_kind'] = best_cards_by_rank_group
+        else:
+            possible_hands['four_of_a_kind'] = None
+        
+        # Full house (needs both 3 of a kind AND a pair)
+        if stats['max_same_rank'] >= 3 and 2 in stats['rank_counts'].values():
+            possible_hands['full_house'] = best_cards_by_rank_group
+        else:
+            possible_hands['full_house'] = None
+        
+        # Three of a kind (any hand with 3+ of same rank)
+        if stats['max_same_rank'] >= 3:
+            possible_hands['three_of_a_kind'] = best_cards_by_rank_group
+        else:
+            possible_hands['three_of_a_kind'] = None
+        
+        # Two pair (exactly 2 pairs, or more pairs/groups that contain 2 pairs)
+        pair_ranks = [rank for rank, count in stats['rank_counts'].items() if count >= 2]
+        if len(pair_ranks) >= 2:
+            possible_hands['two_pair'] = best_cards_by_rank_group
+        else:
+            possible_hands['two_pair'] = None
+        
+        # One pair (any hand with at least one pair)
+        if stats['max_same_rank'] >= 2:
+            possible_hands['pair'] = best_cards_by_rank_group
+        else:
+            possible_hands['pair'] = None
+        
+        # High card (always possible)
+        possible_hands['high_card'] = self.cards[:5]
+        
+        return possible_hands
+    
     def get_best_hand(self):
         """
-        Classify a n-card poker hand using nested if statements based on a 5-card hand criteria hierarchy.
-        
-        Args:
-            cards: List of (rank, suit) tuples
+        Get the best possible hand from all available hands.
         
         Returns:
             Tuple of (hand_name: str, best_cards: List[Tuple[int, int]])
         """
-        stats = self.analyze_hand()
+        possible_hands = self.get_possible_hands()
         
-        # Start with strictest criteria and broaden
-        # Has a flush
-        if stats['num_suits'] < len(self.cards) - 4:
-            flush_cards = self._get_flush_cards(stats)
-            self.cards = flush_cards
-            stats = self.analyze_hand()
-
-            # The flush is also a straight
-            if stats['straight']:
-                straight_cards = self._get_straight_cards(stats)
-                # Royal flush: straight flush with A high (10-J-Q-K-A)
-                if set([8, 9, 10, 11, 12]).issubset(set(stats['ranks'])):
-                    return 'royal_flush', straight_cards
-                # Straight flush but not royal
-                else:
-                    return 'straight_flush', straight_cards
-            
-            # Flush but not a straight
-            else:
-                return 'flush', flush_cards
-
-        # Has a straight
-        if stats['straight']:
-            # Straight but not flush
-            return 'straight', self._get_straight_cards(stats)
+        # Define hand hierarchy (best to worst)
+        hand_hierarchy = [
+            'royal_flush',
+            'straight_flush', 
+            'four_of_a_kind',
+            'full_house',
+            'flush',
+            'straight',
+            'three_of_a_kind',
+            'two_pair',
+            'pair',
+            'high_card'
+        ]
         
-        # Handle same-kind pairs
-        best_cards_by_rank_group = self._get_best_cards_by_rank_groups(stats)
-        match stats['max_same_rank']:
-            # Four of a kind
-            case 4:
-                return 'four_of_a_kind', best_cards_by_rank_group
+        # Find the best available hand
+        for hand_name in hand_hierarchy:
+            if possible_hands[hand_name] is not None:
+                return hand_name, possible_hands[hand_name]
         
-            # Three of a kind
-            case 3:
-                # Also has a pair
-                if 2 in stats['rank_counts'].values():
-                    return 'full_house', best_cards_by_rank_group
-                else:
-                    return 'three_of_a_kind', best_cards_by_rank_group
-        
-            # Has pairs
-            case 2:
-                # Two pairs
-                if list(stats['rank_counts'].values()).count(2) == 2:
-                    return 'two_pair', best_cards_by_rank_group
-                # One pair
-                else:
-                    return 'pair', best_cards_by_rank_group
-        
-        # No pairs, no straight, no flush
-        # get 5 highest cards
-        high_cards = self.cards[:5]
-        return 'high_card', high_cards
+        # This should never happen since high_card is always available
+        return 'high_card', self.cards[:5]
     
 
     def score(self) -> int:
